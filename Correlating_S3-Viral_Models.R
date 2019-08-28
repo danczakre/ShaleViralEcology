@@ -1,4 +1,4 @@
-### This script will perform spearman mantel correlations 
+### Relating the Microbial and Viral null modeling results
 
 library(vegan) # Needed for permuted Procrustes
 library(ecodist)
@@ -11,7 +11,7 @@ library(gridExtra) # Helps in the plotting process
 ########################
 
 # Set directory
-setwd("//path/to/ecological_modeling_results")
+setwd("~/Documents/Shale Ecological Modeling/Documents/Supplemental/Data with only U2-U3/")
 
 # S3 data
 S3.bNTI = read.csv("S3_Community_bNTI_TotalCounts.csv",
@@ -29,13 +29,21 @@ Vir.U2RC = read.csv("U2_RCBC_NormCounts_NormUPGMA.csv",
 
 # Factors
 S3.factors = read.csv("S3_Community_Factors_Sheet.csv")
-Vir.factors = read.csv("Viral_Model_Factors.csv")
+Vir.factors = read.csv("Viral_Model_Factors.")
 
 ############################
 ### Cleaning up the data ###
 ############################
 
-# Removing unnecessaary comparisons
+# Looking only at two wells
+S3.bNTI = S3.bNTI[grep("U3|U2", S3.factors$Well), grep("U3|U2", S3.factors$Well)]
+S3.RCBC = S3.RCBC[grep("U3|U2", S3.factors$Well), grep("U3|U2", S3.factors$Well)]
+S3.factors = S3.factors[grep("U3|U2", S3.factors$Well), ]
+
+Vir.bNTI = Vir.bNTI[grep("U2_|U3_", row.names(Vir.bNTI)), grep("U2_|U3_", row.names(Vir.bNTI))]
+Vir.factors = Vir.factors[grep("U2_|U3_", Vir.factors$Sample_Name), ]
+
+# Removing unintersting comparisons
 S3.bNTI = S3.bNTI[-grep("HT|LW", row.names(S3.bNTI)), -grep("HT|LW", row.names(S3.bNTI))]
 S3.RCBC = S3.RCBC[-grep("HT|LW", row.names(S3.RCBC)), -grep("HT|LW", row.names(S3.RCBC))]
 S3.factors = S3.factors[-grep("HT|LW", S3.factors$Sample_Name), ]
@@ -50,7 +58,7 @@ Vir.factors = Vir.factors[-grep("HT|LW", Vir.factors$Sample_Name), ]
 ### Setting up some initial data ###
 ####################################
 
-Wells = c("Utica-3", "Utica-2")
+Wells = c("U3", "U2")
 cols = data.frame(light = c("#abc2d6", "#b8e0c8"),
                   dark = c("#2171B5" , "#006D2C"))
 
@@ -66,12 +74,13 @@ Vir.bNTI[upper.tri(Vir.bNTI)] = t(Vir.bNTI)[upper.tri(Vir.bNTI)]
 mant = NULL
 prot = NULL
 names = NULL
+prot.names = NULL
 
 for(i in 1:length(Wells)){
   temp.SbNTI = S3.bNTI[grep(Wells[i], S3.factors$Well), grep(Wells[i], S3.factors$Well)]
   temp.VbNTI = Vir.bNTI[grep(Wells[i], Vir.factors$Alt_Sample), grep(Wells[i], Vir.factors$Alt_Sample)]
   
-  if(Wells[i] == "Utica-3"){
+  if(Wells[i] == "U3"){
     w = c(grep("FT|RT", row.names(temp.VbNTI), invert = T), grep("FT|RT", row.names(temp.VbNTI)))
     temp.VbNTI = temp.VbNTI[w, w]
   }
@@ -83,12 +92,13 @@ for(i in 1:length(Wells)){
     temp.VbNTI = temp.VbNTI[-w,-w]
   }
   
-  x = vegan::mantel(xdis = as.dist(temp.SbNTI), ydis = as.dist(temp.VbNTI), permutations = 9999, method = "spearman", na.rm = T) # Running the Mantel test...
+  x = vegan::mantel(xdis = as.dist(temp.SbNTI), ydis = as.dist(temp.VbNTI), permutations = 9999, method = "pearson", na.rm = T) # Running the Mantel test...
   y = protest(X = as.dist(temp.SbNTI), Y = as.dist(temp.VbNTI), permutations = 9999) # Running a permuted Procrustes analyses
   
   mant = rbind(mant, c(x$statistic, x$signif)) # Storing mantel results
   prot = rbind(prot, c(y$ss, y$scale, y$signif)) # Storing the procrustes results
   names = c(names, paste(Wells[i], " bNTI", sep = ""))
+  prot.names = c(prot.names, paste(Wells[i], " bNTI", sep = ""))
   
   temp.SbNTI = melt(temp.SbNTI, na.rm = T)
   temp.VbNTI = melt(temp.VbNTI, na.rm = T)
@@ -96,11 +106,13 @@ for(i in 1:length(Wells)){
   temp.bNTI = data.frame(SbNTI = temp.SbNTI$value, VbNTI = temp.VbNTI$value)
 
   # Generating a plot to demonstrate the relationship (using Mantel statistics, however)
+  int.slo = coef(lm(temp.VbNTI$value~temp.SbNTI$value)) # Storing intercept/slope
   adj = data.frame(xpos = Inf, ypos = -Inf, text = paste("Mantel r: ", round(x$statistic, digits = 3),
                                                          " p-value:", round(x$signif, digits = 5), sep = ""), hjustvar = 1, vjustvar = 0) # Creating mapping information for labels
   print(
     ggplot(data = temp.bNTI, aes(x = SbNTI, y = VbNTI))+
       geom_point(color = cols$dark[i])+
+      geom_abline(intercept = int.slo[1], slope = int.slo[2], colour = "blue", size = 1)+
       geom_smooth(colour = "red", linetype = "longdash", size = 0.8, se = F)+
       geom_text(data = adj, aes(x = xpos, y = ypos, hjust = hjustvar, vjust = vjustvar, label = text))+
       theme_bw()
@@ -126,7 +138,7 @@ for(i in 1:length(Wells)){
   temp.VbNTI = Vir.bNTI[grep(Wells[i], Vir.factors$Alt_Sample), grep(Wells[i], Vir.factors$Alt_Sample)]
   
   
-  if(Wells[i] == "Utica-3"){
+  if(Wells[i] == "U3"){
     temp.VRCBC = Vir.U3RC
     
     w = c(grep("FT|RT", row.names(temp.VRCBC), invert = T), grep("FT|RT", row.names(temp.VRCBC)))
@@ -136,7 +148,7 @@ for(i in 1:length(Wells)){
     temp.VbNTI = temp.VbNTI[w, w]
   }
   
-  if(Wells[i] == "Utica-2"){
+  if(Wells[i] == "U2"){
     temp.VRCBC = Vir.U2RC
   }
   
@@ -157,6 +169,7 @@ for(i in 1:length(Wells)){
   mant = rbind(mant, c(x$statistic, x$signif)) # Storing mantel results
   prot = rbind(prot, c(y$ss, y$scale, y$signif)) # Storing the procrustes results
   names = c(names, paste(Wells[i], " RCBC", sep = ""))
+  prot.names = c(prot.names, paste(Wells[i], " RCBC", sep = ""))
   
   # Looking at only comparisons with insignificant bNTI values
   bak.S = temp.SRCBC
@@ -264,4 +277,6 @@ for(i in 1:length(Wells)){
 }
 
 colnames(mant) = c("Mantel r", "Significance")
+colnames(prot) = c("Sum of squared differences", "Scaling factor", "Significance")
 row.names(mant) = names
+row.names(prot) = prot.names
