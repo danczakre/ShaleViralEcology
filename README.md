@@ -6,7 +6,7 @@ Each script contains a distinct analysis:
 - <b>Process_Viral_Eco_Models.R</b> generates viral bNTI and RCBC boxplots
 - <b>S3_Community_bNTI.R</b> is the bNTI implementation for the microbial community
 - <b>S3_Community_RCBC.R</b> is the RCBC implementation for the microbial community
-- <b>S3_Phylogeny_Plot.R</b> generates a stacked-bar chart for each of the fractured shale wells studied
+- <b>S3_Phylogeny_Plot.R</b> generates a stacked-bar chart for each of the fractured shale wells studied, as well as a plot illustrating the proportion represented by <i>Halanaerobium</i> through time
 - <b>vContact_Processing.R</b> converts vConTACT viral similarity data into a UPGMA dendrogram
 - <b>Viral_Community_bNTI.R</b> is the bNTI implementation for the viral community
 - <b>Viral_Community_RCBC.R</b> is the RCBC implementation for the viral community
